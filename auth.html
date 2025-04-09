@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticazione - FinanceTracker</title>
+    
+    <!-- Reindirizzamento HTTPS -->
+    <script>
+        // Forza HTTPS se non lo è già
+        (function() {
+            const isSecure = window.location.protocol === 'https:';
+            const currentDomain = window.location.hostname;
+            const isLocalhost = currentDomain === 'localhost' || currentDomain === '127.0.0.1' || currentDomain === '';
+            
+            // Reindirizza a HTTPS se non siamo in localhost e non siamo già su HTTPS
+            if (!isSecure && !isLocalhost) {
+                console.log("Reindirizzamento a HTTPS...");
+                window.location.href = 'https://' + window.location.host + window.location.pathname + window.location.search;
+            }
+        })();
+    </script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+        }
+        
+        .login-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.2);
+            width: 350px;
+            max-width: 90%;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        #error-message {
+            color: red;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .test-credentials {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .protocol-indicator {
+            position: fixed;
+            top: 10px; 
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .protocol-https {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .protocol-http {
+            background-color: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Indicatore protocollo -->
+    <div id="protocol-indicator" class="protocol-indicator">
+        Connessione sicura
+    </div>
+    
+    <div class="login-container">
+        <h1>Accedi a FinanceTracker</h1>
+        
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" placeholder="La tua email" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" placeholder="La tua password" required>
+        </div>
+        
+        <button id="login-button">Accedi</button>
+        
+        <div id="error-message"></div>
+        
+        <div class="test-credentials">
+            Usa queste credenziali di test:<br>
+            Email: admin@example.com<br>
+            Password: password123
+        </div>
+        
+        <div class="back-link">
+            <a href="index.html">Torna alla home</a>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mostra stato protocollo
+            const protocolIndicator = document.getElementById('protocol-indicator');
+            const isSecure = window.location.protocol === 'https:';
+            
+            if (isSecure) {
+                protocolIndicator.textContent = 'Connessione sicura (HTTPS)';
+                protocolIndicator.className = 'protocol-indicator protocol-https';
+            } else {
+                protocolIndicator.textContent = 'Connessione non sicura (HTTP)';
+                protocolIndicator.className = 'protocol-indicator protocol-http';
+            }
+            
+            const loginButton = document.getElementById('login-button');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const errorMessage = document.getElementById('error-message');
+            
+            // Aggiungi evento di pressione Enter
+            passwordInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loginHandler();
+                }
+            });
+            
+            // Aggiungi evento di click sul pulsante di login
+            loginButton.addEventListener('click', loginHandler);
+            
+            function loginHandler() {
+                const email = emailInput.value;
+                const password = passwordInput.value;
+                
+                if (!email || !password) {
+                    errorMessage.textContent = 'Inserisci email e password';
+                    return;
+                }
+                
+                // Credenziali di test
+                if (email === 'admin@example.com' && password === 'password123') {
+                    // Salva lo stato di autenticazione
+                    localStorage.setItem('isAuthenticated', 'true');
+                    localStorage.setItem('userEmail', email);
+                    
+                    // Reindirizza alla pagina principale
+                    window.location.href = 'index.html';
+                } else {
+                    errorMessage.textContent = 'Credenziali non valide. Prova con le credenziali di test.';
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

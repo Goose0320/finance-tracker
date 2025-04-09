@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firebase</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    
+    <script>
+        // Configurazione Firebase diretta
+        const firebaseConfig = {
+            apiKey: "AIzaSyAWXb-ZTwns_NeyJu6Nr-Zvg_1klQElwjU",
+            authDomain: "financetracker-456219.firebaseapp.com",
+            projectId: "financetracker-456219",
+            storageBucket: "financetracker-456219.appspot.com",
+            messagingSenderId: "842737587122",
+            appId: "1:842737587122:web:dab39fa1fd16cec2778aab"
+        };
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Log inizializzazione
+            console.log("Test Firebase iniziato");
+            document.getElementById('status').textContent = "Inizializzazione...";
+            
+            try {
+                // Inizializza Firebase
+                firebase.initializeApp(firebaseConfig);
+                console.log("Firebase inizializzato correttamente");
+                document.getElementById('status').textContent = "Firebase inizializzato";
+                
+                // Form di login
+                document.getElementById('login-form').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    const resultDiv = document.getElementById('login-result');
+                    
+                    resultDiv.textContent = "Login in corso...";
+                    
+                    firebase.auth().signInWithEmailAndPassword(email, password)
+                        .then((userCredential) => {
+                            resultDiv.textContent = "Login riuscito: " + userCredential.user.email;
+                            resultDiv.style.color = "green";
+                        })
+                        .catch((error) => {
+                            resultDiv.textContent = "Errore: " + error.message;
+                            resultDiv.style.color = "red";
+                            console.error("Errore login:", error);
+                        });
+                });
+                
+                // Monitora lo stato di autenticazione
+                firebase.auth().onAuthStateChanged(function(user) {
+                    const authStatus = document.getElementById('auth-status');
+                    if (user) {
+                        authStatus.textContent = "Utente autenticato: " + user.email;
+                        authStatus.style.color = "green";
+                    } else {
+                        authStatus.textContent = "Nessun utente autenticato";
+                        authStatus.style.color = "red";
+                    }
+                });
+                
+            } catch (error) {
+                console.error("Errore durante l'inizializzazione di Firebase:", error);
+                document.getElementById('status').textContent = "Errore: " + error.message;
+                document.getElementById('status').style.color = "red";
+            }
+        });
+    </script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status-box {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        form {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        input {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Firebase</h1>
+    
+    <div class="status-box">
+        <h3>Stato inizializzazione:</h3>
+        <div id="status">In attesa...</div>
+    </div>
+    
+    <div class="status-box">
+        <h3>Stato autenticazione:</h3>
+        <div id="auth-status">Sconosciuto</div>
+    </div>
+    
+    <form id="login-form">
+        <h3>Test login</h3>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit">Prova login</button>
+        <div id="login-result" style="margin-top: 10px;"></div>
+    </form>
+    
+    <div>
+        <p><strong>Note:</strong></p>
+        <ul>
+            <li>Questo file è un test isolato per verificare la configurazione Firebase</li>
+            <li>Se visualizzi errori, controlla la console del browser (F12)</li>
+            <li>Assicurati che i domini siano configurati correttamente in Firebase</li>
+        </ul>
+    </div>
+</body>
+</html> 

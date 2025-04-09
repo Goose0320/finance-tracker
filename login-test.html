@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        #login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255,255,255,0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .login-form {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.2);
+            width: 350px;
+            max-width: 90%;
+        }
+        
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        button {
+            padding: 12px 25px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .button-container {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        #login-error {
+            color: red;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        #app-content {
+            display: none;
+            padding: 20px;
+            flex-grow: 1;
+        }
+        
+        #status-message {
+            text-align: center;
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="login-container">
+        <div class="login-form">
+            <h2>Accedi a FinanceTracker</h2>
+            <div>
+                <label for="login-email">Email:</label>
+                <input type="email" id="login-email" placeholder="La tua email" required>
+            </div>
+            <div>
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" placeholder="La tua password" required>
+            </div>
+            <div class="button-container">
+                <button id="login-button">Accedi</button>
+            </div>
+            <div id="login-error"></div>
+        </div>
+    </div>
+    
+    <div id="app-content">
+        <div id="status-message">Login avvenuto con successo!</div>
+        <h1>Benvenuto in FinanceTracker</h1>
+        <p>Questa è una pagina di test per verificare che l'autenticazione funzioni correttamente.</p>
+        <button id="logout-button">Esci</button>
+    </div>
+    
+    <script>
+        // Configurazione Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAWXb-ZTwns_NeyJu6Nr-Zvg_1klQElwjU",
+            authDomain: "financetracker-456219.firebaseapp.com",
+            projectId: "financetracker-456219",
+            storageBucket: "financetracker-456219.appspot.com",
+            messagingSenderId: "842737587122",
+            appId: "1:842737587122:web:dab39fa1fd16cec2778aab"
+        };
+        
+        // Inizializza Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Elementi DOM
+        const loginContainer = document.getElementById('login-container');
+        const appContent = document.getElementById('app-content');
+        const loginButton = document.getElementById('login-button');
+        const logoutButton = document.getElementById('logout-button');
+        const errorElement = document.getElementById('login-error');
+        
+        // Gestisce il login
+        loginButton.addEventListener('click', function() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!email || !password) {
+                errorElement.textContent = 'Inserisci email e password';
+                return;
+            }
+            
+            errorElement.textContent = 'Login in corso...';
+            
+            firebase.auth().signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    errorElement.textContent = '';
+                })
+                .catch((error) => {
+                    errorElement.textContent = 'Errore: ' + error.message;
+                });
+        });
+        
+        // Gestisce il logout
+        logoutButton.addEventListener('click', function() {
+            firebase.auth().signOut();
+        });
+        
+        // Monitora lo stato di autenticazione
+        firebase.auth().onAuthStateChanged(function(user) {
+            if (user) {
+                // Utente autenticato
+                loginContainer.style.display = 'none';
+                appContent.style.display = 'block';
+                document.getElementById('status-message').textContent = 
+                    'Login avvenuto con successo come: ' + user.email;
+            } else {
+                // Utente non autenticato
+                loginContainer.style.display = 'flex';
+                appContent.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html> 

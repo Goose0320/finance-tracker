@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanceTracker - Gestione Movimenti</title>
+    
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Gestione errori e logging -->
+    <script>
+        // Cattura errori globali
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error("ERRORE GLOBALE:", message, "in", source, "linea", lineno);
+            return false;
+        };
+    </script>
+    
+    <!-- Librerie per i grafici e funzionalità avanzate -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
+    <!-- Database e autenticazione -->
+    <script src="supabase-config.js"></script>
+    
+    <!-- Altre librerie -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        // Garantiamo che jsPDF sia disponibile globalmente
+        window.onload = function() {
+            if (typeof jspdf !== 'undefined') {
+                window.jspdf = jspdf;
+                console.log('jsPDF caricato e inizializzato globalmente');
+            }
+        };
+    </script>
+    
+    <!-- Gestione errori globale -->
+    <script>
+        window.addEventListener('error', function(e) {
+            console.error('Errore globale:', e.message);
+            
+            // Mostra una notifica di errore
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('Si è verificato un errore: ' + e.message, 'error');
+            }
+            
+            return false;
+        });
+        
+        // Funzione per mostrare notifiche all'utente
+        window.showNotification = function(message, type = 'info') {
+            const notificationContainer = document.getElementById('notification-container');
+            if (!notificationContainer) return;
+            
+            const notificationElement = document.createElement('div');
+            notificationElement.className = `notification ${type}`;
+            notificationElement.innerHTML = `
+                <span class="notification-message">${message}</span>
+                <button class="notification-close">&times;</button>
+            `;
+            
+            // Aggiungi la notifica al container
+            notificationContainer.appendChild(notificationElement);
+            
+            // Aggiungi l'event listener per chiudere la notifica
+            notificationElement.querySelector('.notification-close').addEventListener('click', function() {
+                notificationContainer.removeChild(notificationElement);
+            });
+            
+            // Auto-rimuovi dopo 5 secondi
+            setTimeout(function() {
+                if (notificationElement.parentNode === notificationContainer) {
+                    notificationContainer.removeChild(notificationElement);
+                }
+            }, 5000);
+        };
+    </script>
+</head>
+<body>
+    <script>
+        // Verifica immediata della disponibilità di jsPDF
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof window.jspdf !== 'undefined') {
+                console.log('jsPDF è disponibile');
+                window.jsPDF = window.jspdf.jsPDF;
+            } else {
+                console.error('ATTENZIONE: jsPDF non è disponibile!');
+            }
+        });
+    </script>
+    <header>
+        <h1>FinanceTracker</h1>
+        <div id="user-info">
+            <span id="user-name">Utente Personale</span>
+            <button id="quick-sync-btn" title="Sincronizza dati" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <span id="sync-icon">↻</span> Sincronizza
+            </button>
+            <span>Ultima: <span id="last-sync-time">Mai</span></span>
+        </div>
+    </header>
+
+    <main>
+        <section id="app-container">
+            <nav>
+                <ul>
+                    <li class="active"><a href="#movements">Movimenti</a></li>
+                    <li><a href="#reports">Report</a></li>
+                    <li><a href="#settings">Impostazioni</a></li>
+                </ul>
+            </nav>
+
+            <div id="movements" class="tab-content active">
+                <h2>Gestione Movimenti</h2>
+                
+                <div class="form-container">
+                    <h3>Nuovo Movimento</h3>
+                    <form id="movement-form">
+                        <div class="form-group">
+                            <label for="movement-type">Tipo:</label>
+                            <select id="movement-type" required>
+                                <option value="uscita">Uscita</option>
+                                <option value="ingresso">Ingresso</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="movement-category">Categoria:</label>
+                            <select id="movement-category" required>
+                                <option value="">-- Seleziona categoria --</option>
+                                <option value="alimentari">Alimentari</option>
+                                <option value="bollette">Bollette</option>
+                                <option value="trasporti">Trasporti</option>
+                                <option value="tempo_libero">Tempo Libero</option>
+                                <option value="stipendio">Stipendio</option>
+                                <option value="altro">Altro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="movement-amount">Importo (€):</label>
+                            <input type="number" id="movement-amount" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="movement-date">Data:</label>
+                            <input type="date" id="movement-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="movement-description">Descrizione:</label>
+                            <input type="text" id="movement-description" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="movement-tags">Tag (separati da virgola):</label>
+                            <input type="text" id="movement-tags" placeholder="es. mensile, fisso, essenziale">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit">Salva</button>
+                            <button type="reset">Cancella</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="movements-list-container">
+                    <h3>Lista Movimenti</h3>
+                    <div class="filters">
+                        <input type="text" id="search-filter" placeholder="Cerca...">
+                        <select id="category-filter">
+                            <option value="">Tutte le categorie</option>
+                            <option value="alimentari">Alimentari</option>
+                            <option value="bollette">Bollette</option>
+                            <option value="trasporti">Trasporti</option>
+                            <option value="tempo_libero">Tempo Libero</option>
+                            <option value="stipendio">Stipendio</option>
+                            <option value="altro">Altro</option>
+                        </select>
+                        <select id="type-filter">
+                            <option value="">Tutti i tipi</option>
+                            <option value="uscita">Uscite</option>
+                            <option value="ingresso">Ingressi</option>
+                        </select>
+                        <div class="date-range">
+                            <label for="date-from">Da:</label>
+                            <input type="date" id="date-from">
+                            <label for="date-to">A:</label>
+                            <input type="date" id="date-to">
+                        </div>
+                        <button id="apply-filters">Applica Filtri</button>
+                        <button id="reset-filters">Reset</button>
+                    </div>
+
+                    <table id="movements-table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Categoria</th>
+                                <th>Descrizione</th>
+                                <th>Importo</th>
+                                <th>Tag</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="movements-data">
+                            <!-- I dati verranno inseriti dinamicamente tramite JavaScript -->
+                        </tbody>
+                    </table>
+
+                    <div class="pagination">
+                        <button id="prev-page">Precedente</button>
+                        <span id="page-info">Pagina 1 di 1</span>
+                        <button id="next-page">Successiva</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reports" class="tab-content">
+                <h2>Report e Grafici</h2>
+                
+                <div class="report-controls">
+                    <div class="period-selector">
+                        <h3>Seleziona Periodo</h3>
+                        <div class="time-range-buttons">
+                            <button id="period-day" class="period-btn active">Giornaliero</button>
+                            <button id="period-week" class="period-btn">Settimanale</button>
+                            <button id="period-month" class="period-btn">Mensile</button>
+                            <button id="period-year" class="period-btn">Annuale</button>
+                            <button id="period-custom" class="period-btn">Personalizzato</button>
+                        </div>
+                        
+                        <div id="custom-period-selector" class="custom-period" style="display: none;">
+                            <div class="date-range">
+                                <label for="report-date-from">Da:</label>
+                                <input type="date" id="report-date-from">
+                                <label for="report-date-to">A:</label>
+                                <input type="date" id="report-date-to">
+                                <button id="apply-custom-period">Applica</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="report-filters">
+                        <h3>Filtri Report</h3>
+                        <div class="filter-options">
+                            <div class="filter-group">
+                                <label for="report-category-filter">Categoria:</label>
+                                <select id="report-category-filter">
+                                    <option value="">Tutte le categorie</option>
+                                    <option value="alimentari">Alimentari</option>
+                                    <option value="bollette">Bollette</option>
+                                    <option value="trasporti">Trasporti</option>
+                                    <option value="tempo_libero">Tempo Libero</option>
+                                    <option value="stipendio">Stipendio</option>
+                                    <option value="altro">Altro</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="report-tag-filter">Tag:</label>
+                                <input type="text" id="report-tag-filter" placeholder="Filtra per tag...">
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label for="report-type-filter">Tipo:</label>
+                                <select id="report-type-filter">
+                                    <option value="">Entrambi</option>
+                                    <option value="ingresso">Solo ingressi</option>
+                                    <option value="uscita">Solo uscite</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-actions">
+                                <button id="apply-report-filters">Applica Filtri</button>
+                                <button id="reset-report-filters">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="report-summary">
+                    <h3>Riepilogo</h3>
+                    <div class="summary-cards">
+                        <div class="summary-card income">
+                            <h4>Entrate Totali</h4>
+                            <div class="amount" id="total-income">€0.00</div>
+                        </div>
+                        <div class="summary-card expenses">
+                            <h4>Uscite Totali</h4>
+                            <div class="amount" id="total-expenses">€0.00</div>
+                        </div>
+                        <div class="summary-card balance">
+                            <h4>Saldo</h4>
+                            <div class="amount" id="total-balance">€0.00</div>
+                        </div>
+                        <div class="summary-card average">
+                            <h4>Media Giornaliera</h4>
+                            <div class="amount" id="daily-average">€0.00</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="charts-container" id="report-charts">
+                    <div class="chart-row">
+                        <div class="chart-card">
+                            <h3>Entrate vs Uscite</h3>
+                            <div class="chart-container">
+                                <canvas id="income-expense-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Distribuzione per Categoria</h3>
+                            <div class="chart-container">
+                                <canvas id="category-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-row">
+                        <div class="chart-card full-width">
+                            <h3>Andamento nel Tempo</h3>
+                            <div class="chart-container">
+                                <canvas id="trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-row">
+                        <div class="chart-card">
+                            <h3>Top 5 Spese</h3>
+                            <div class="chart-container">
+                                <canvas id="top-expenses-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Comparazione con Periodo Precedente</h3>
+                            <div class="chart-container">
+                                <canvas id="comparison-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="export-options">
+                    <h3>Esporta Report</h3>
+                    <div class="export-buttons">
+                        <button id="export-csv">Esporta CSV</button>
+                        <button id="export-pdf" onclick="exportReportToPDF()">Genera PDF</button>
+                        <button id="print-report">Stampa</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings" class="tab-content">
+                <h2>Impostazioni</h2>
+                
+                <div class="settings-container">
+                    <div class="settings-section">
+                        <h3>Account e Sincronizzazione</h3>
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <label>Sincronizzazione dati:</label>
+                                <div class="sync-status-active">Sempre attiva (automatica)</div>
+                            </div>
+                            <div id="sync-status" class="settings-status">Non sincronizzato</div>
+                            <div class="form-group">
+                                <button id="sync-now-btn">Sincronizza Ora</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h3>Gestione Dati</h3>
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <button id="export-all-data-btn">Esporta Tutti i Dati</button>
+                            </div>
+                            <div class="form-group">
+                                <button id="import-data-btn">Importa Dati</button>
+                                <input type="file" id="import-data-file" accept=".json" style="display: none;">
+                            </div>
+                            <div class="form-group danger-zone">
+                                <label>Zona Pericolosa:</label>
+                                <button id="clear-data-btn" class="danger-btn">Cancella Tutti i Dati</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 FinanceTracker - Versione 1.0</p>
+    </footer>
+
+    <!-- Container per le notifiche -->
+    <div id="notification-container"></div>
+
+    <script src="app.js"></script>
+    <script src="api.js"></script>
+    <script src="report.js"></script>
+    <script src="csv.js"></script>
+    <script src="settings.js"></script>
+    <script src="exportPDF.js"></script>
+    
+    <!-- Script di sincronizzazione migliorato -->
+    <script>
+        // Configurazione della sincronizzazione
+        const SYNC_INTERVAL_MS = 30000; // 30 secondi (ridotto da 2 minuti)
+        let syncInterval = null;
+        let syncInProgress = false;
+        let lastInteractionTime = Date.now();
+        
+        // Traccia l'interazione dell'utente per sincronizzare dopo l'interazione
+        document.addEventListener('click', () => {
+            const now = Date.now();
+            // Se sono passati più di 15 secondi dall'ultima interazione, sincronizza
+            if (now - lastInteractionTime > 15000 && !syncInProgress) {
+                console.log("Sincronizzazione dopo interazione utente");
+                performSync(false);
+            }
+            lastInteractionTime = now;
+        });
+        
+        // Funzione per eseguire la sincronizzazione
+        function performSync(manual = false) {
+            // Evita sincronizzazioni simultanee
+            if (syncInProgress) {
+                console.log("Sincronizzazione già in corso, salto questo ciclo");
+                return Promise.resolve();
+            }
+
+            // Aggiorna l'UI
+            const syncButton = document.getElementById('quick-sync-btn');
+            const syncIcon = document.getElementById('sync-icon');
+            
+            if (syncButton) {
+                syncButton.disabled = true;
+                if (syncIcon) {
+                    syncIcon.classList.add('rotating');
+                }
+            }
+
+            syncInProgress = true;
+
+            // Esegui la sincronizzazione
+            return window.syncData(manual === false)
+                .then(() => {
+                    console.log("Sincronizzazione completata con successo");
+                    
+                    // Aggiorna l'ultima volta che abbiamo sincronizzato
+                    document.getElementById('last-sync-time').textContent = new Date().toLocaleTimeString();
+                    
+                    // Cambia colore del pulsante per indicare successo temporaneamente
+                    if (syncButton) {
+                        syncButton.classList.add('sync-success');
+                        setTimeout(() => {
+                            syncButton.classList.remove('sync-success');
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    console.error("Errore durante la sincronizzazione:", error);
+                    
+                    // Cambia colore del pulsante per indicare errore temporaneamente
+                    if (syncButton) {
+                        syncButton.classList.add('sync-error');
+                        setTimeout(() => {
+                            syncButton.classList.remove('sync-error');
+                        }, 2000);
+                    }
+                })
+                .finally(() => {
+                    // Ripristina lo stato dell'UI
+                    if (syncButton) {
+                        syncButton.disabled = false;
+                        if (syncIcon) {
+                            syncIcon.classList.remove('rotating');
+                        }
+                    }
+                    syncInProgress = false;
+                });
+        }
+
+        // Configura la sincronizzazione automatica
+        function setupAutoSync() {
+            // Ottieni le impostazioni di sincronizzazione
+            const settings = localStorage.getItem('financeTrackerSettings') ? 
+                JSON.parse(localStorage.getItem('financeTrackerSettings')) : {};
+            
+            // Forza l'attivazione della sincronizzazione
+            if (syncInterval) clearInterval(syncInterval);
+            syncInterval = setInterval(() => {
+                performSync(false);
+            }, SYNC_INTERVAL_MS);
+            
+            console.log("Sincronizzazione automatica attivata");
+            
+            // Sincronizzazione iniziale
+            setTimeout(() => {
+                performSync(false);
+            }, 5000); // Attendi 5 secondi dopo il caricamento della pagina
+        }
+
+        // Verifica se è necessario sincronizzare quando la pagina diventa visibile
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                const settings = localStorage.getItem('financeTrackerSettings') ? 
+                    JSON.parse(localStorage.getItem('financeTrackerSettings')) : {};
+                
+                // Sincronizza sempre, indipendentemente dall'impostazione di sincronizzazione
+                const lastSync = settings.lastSync || 0;
+                const now = Date.now();
+                
+                // Se sono passati più di 2 minuti dall'ultima sincronizzazione
+                if (now - lastSync > SYNC_INTERVAL_MS) {
+                    console.log("Sincronizzazione al ritorno alla pagina");
+                    performSync(false);
+                }
+            }
+        });
+
+        // Verifica connessione online/offline
+        window.addEventListener('online', () => {
+            console.log("Connessione ripristinata, tentativo di sincronizzazione");
+            performSync(false);
+        });
+
+        // Configura il pulsante di sincronizzazione rapida
+        document.addEventListener('DOMContentLoaded', () => {
+            const syncButton = document.getElementById('quick-sync-btn');
+            const lastSyncSpan = document.getElementById('last-sync-time');
+            
+            if (syncButton) {
+                syncButton.addEventListener('click', () => {
+                    performSync(true);
+                });
+            }
+            
+            if (lastSyncSpan) {
+                const settings = localStorage.getItem('financeTrackerSettings') ? 
+                    JSON.parse(localStorage.getItem('financeTrackerSettings')) : {};
+                
+                if (settings.lastSync) {
+                    lastSyncSpan.textContent = new Date(settings.lastSync).toLocaleTimeString();
+                } else {
+                    lastSyncSpan.textContent = "Mai";
+                }
+            }
+            
+            // Avvia la sincronizzazione automatica
+            setupAutoSync();
+        });
+
+        // Verifica se le funzioni di sistema sono disponibili all'inizio
+        function checkSystemFunctions() {
+            if (typeof window.firebase === 'undefined') {
+                console.error("Firebase non è inizializzato");
+                return false;
+            }
+            
+            if (typeof window.syncData !== 'function') {
+                console.error("La funzione syncData non è disponibile");
+                setTimeout(checkSystemFunctions, 1000); // Riprova tra 1 secondo
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Controlla e inizializza le funzioni di sistema
+        setTimeout(checkSystemFunctions, 1000);
+    </script>
+    
+    <style>
+        @keyframes rotating {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .rotating {
+            animation: rotating 2s linear infinite;
+        }
+        
+        #quick-sync-btn {
+            transition: background-color 0.3s ease;
+        }
+        
+        .sync-success {
+            background-color: #4CAF50 !important;
+        }
+        
+        .sync-error {
+            background-color: #F44336 !important;
+        }
+        
+        #last-sync-time {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 8px;
+        }
+        
+        .sync-status-active {
+            background-color: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        /* Stili per le notifiche */
+        #notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            width: 300px;
+        }
+        
+        .notification {
+            background-color: #f8f8f8;
+            border-left: 4px solid #2196F3;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 4px;
+            position: relative;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .notification.success {
+            border-left-color: #4CAF50;
+        }
+        
+        .notification.error {
+            border-left-color: #F44336;
+        }
+        
+        .notification.warning {
+            border-left-color: #FF9800;
+        }
+        
+        .notification-message {
+            margin-right: 20px;
+            font-size: 14px;
+        }
+        
+        .notification-close {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .notification-close:hover {
+            color: #333;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</body>
+</html> 
